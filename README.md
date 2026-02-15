@@ -1,165 +1,169 @@
-# Balanceo ATM BNA - MVP Offline (Flutter)
+# Balanceo ATM (MVP Offline)
 
-## 1) Elección de stack: **Flutter**
+Aplicación móvil Flutter para Android (preparada para iOS) orientada al flujo de balanceo de tickets de ATM, 100% offline.
 
-Se elige **Flutter** sobre React Native para este MVP por:
+## Diagnóstico del repo
 
-- **Mejor consistencia UI cross-platform** (Android/iOS) con menos variaciones visuales.
-- **Rendimiento sólido en tareas on-device** (flujo OCR + procesamiento local + PDF).
-- Ecosistema maduro para:
-  - OCR offline con `google_mlkit_text_recognition`.
-  - Captura de imagen con `image_picker` (y migrable a `camera` para guías avanzadas).
-  - Persistencia local con SQLite (`drift` + `sqlcipher_flutter_libs` para cifrado).
-  - PDF con `pdf` + `printing`.
-- Facilita arquitectura limpia (Domain/Data/Presentation) y test unitarios de parsers.
+El repositorio ya tenía una base funcional en Flutter con OCR on-device, ajustes por gaveta, generación PDF y persistencia local. En esta iteración se reorganizó en una arquitectura modular por features para acercarla al objetivo de producto solicitado y dejar puntos de extensión claros para futuros parsers y plantilla PDF real. Además, se eliminó código legacy sin uso (capas antiguas domain/data/presentation) y dependencias no utilizadas para simplificar mantenimiento y tiempos de build.
 
-> Todo el diseño del MVP es **100% offline** y preparado para integrar plantilla real de planilla luego.
+## Plan técnico aplicado
 
----
+1. Reorganizar el código hacia módulos por feature (`config`, `scan`, `review`, `adjustments`, `pdf`, `history`).
+2. Definir y consolidar modelos de dominio: `ATM`, `Config`, `TicketData`, `Balanceo`, `Ajuste`.
+3. Implementar flujo MVP end-to-end offline:
+   - Configuración
+   - Escaneo
+   - OCR
+   - Revisión manual
+   - Ajustes
+   - PDF
+   - Compartir
+   - Historial
+4. Implementar sistema de parsers modular con `TicketParser` + parser genérico fallback.
+5. Agregar tests unitarios para cálculo de ajustes y parser genérico.
+6. Documentar setup y build para Windows / Android físico / release.
 
-## 2) Plan de implementación
-
-1. **Arquitectura base + navegación**
-   - Clean-ish architecture: `core`, `data`, `domain`, `presentation`.
-   - Gestión de estado con **Riverpod** (simple y escalable).
-2. **Configuración inicial**
-   - Sucursal + ABM ATMs con layout/modelo asignado.
-3. **Nuevo balanceo**
-   - Selección ATM, fecha, turno, captura de ticket.
-4. **OCR + parsers pluggables**
-   - OCR on-device.
-   - Detección de layout y parseo por modelo (`NCR`, `Diebold`) + `Fallback`.
-   - Pantalla de revisión/corrección.
-5. **Ajustes por gaveta**
-   - Carga de ajustes en cantidad de billetes por denominación.
-   - Re-cálculo de diferencias y estado conforme/no conforme.
-6. **PDF por ATM/fecha/turno**
-   - Estrategia placeholder lista para conectar plantilla real.
-   - Guardado local y compartir.
-7. **Persistencia local**
-   - SQLite cifrado para config/balanceos.
-8. **Tests parsers**
-   - Fixtures de texto inventados y unit tests.
-
----
-
-## 3) Árbol de carpetas (propuesto)
+## Árbol de archivos (arquitectura actual)
 
 ```text
 lib/
-  main.dart
-  app.dart
-  core/
-    constants/
-    errors/
-    utils/
-  domain/
-    entities/
-      atm.dart
-      config.dart
-      ticket_data.dart
-      ajuste.dart
-      balanceo.dart
-    repositories/
-      config_repository.dart
-      balanceo_repository.dart
-      ocr_repository.dart
-      pdf_repository.dart
-    services/
-      parser_ticket.dart
-      parser_registry.dart
-      parsers/
-        ncr_parser.dart
-        diebold_parser.dart
-        generic_parser.dart
-    usecases/
-      process_ticket_usecase.dart
-      generate_balanceo_pdf_usecase.dart
-  data/
-    db/
-      app_database.dart
-      tables.dart
-    repositories/
-      config_repository_impl.dart
-      balanceo_repository_impl.dart
-      ocr_repository_impl.dart
-      pdf_repository_impl.dart
-    services/
-      image_preprocessor.dart
-      ocr_service.dart
-  presentation/
-    providers/
-      app_providers.dart
-    screens/
-      config_screen.dart
-      new_balanceo_screen.dart
-      review_ticket_screen.dart
-      ajustes_screen.dart
-      summary_screen.dart
-    widgets/
-      atm_form_dialog.dart
-      capture_guide_overlay.dart
-      ajuste_form.dart
-
-test/
-  parser/
-    fixtures.dart
-    parser_registry_test.dart
+ ├── app/
+ │    ├── app_controller.dart
+ │    └── balanceo_app.dart
+ ├── core/
+ │    ├── models/
+ │    │    ├── atm.dart
+ │    │    ├── config.dart
+ │    │    ├── ticket_data.dart
+ │    │    ├── balanceo.dart
+ │    │    └── ajuste.dart
+ │    ├── parsers/
+ │    │    ├── ticket_parser.dart
+ │    │    ├── parser_engine.dart
+ │    │    └── generic_ticket_parser.dart
+ │    ├── services/
+ │    │    ├── offline_ocr_service.dart
+ │    │    ├── local_store_service.dart
+ │    │    └── pdf_service.dart
+ │    └── utils/
+ │         └── adjustments_calculator.dart
+ ├── features/
+ │    ├── config/config_screen.dart
+ │    ├── scan/scan_screen.dart
+ │    ├── review/review_screen.dart
+ │    ├── adjustments/adjustments_screen.dart
+ │    ├── pdf/pdf_screen.dart
+ │    ├── history/history_screen.dart
+ │    └── shared/app_scope.dart
+ └── main.dart
 ```
 
----
+## Stack y decisiones técnicas
 
-## 4) Build y ejecución
+- **Flutter**: una sola base para Android/iOS con alto rendimiento local y buen time-to-market.
+- **OCR offline: `google_mlkit_text_recognition`**
+  - estable y mantenido,
+  - procesamiento on-device sin servidor,
+  - adecuado para MVP donde prima velocidad de implementación.
+- **Cámara: `image_picker`**
+  - API simple para captura rápida,
+  - ampliamente usado y mantenido,
+  - suficiente para MVP (si luego se requiere control fino se puede migrar a `camera`).
+- **Almacenamiento local: JSON en documents directory (`path_provider`)**
+  - simple, robusto para MVP single-user,
+  - totalmente offline,
+  - fácil migración posterior a DB si escala.
+- **PDF y compartir: `pdf` + `printing`**
+  - generación programática de planilla,
+  - soporte de compartir adjuntos desde móvil,
+  - listo para integrar plantilla real más adelante.
 
-### Requisitos
-- Flutter SDK estable (>= 3.22)
-- Android Studio / Xcode
-- CocoaPods (iOS)
+## Funcionalidades MVP implementadas
 
-### Instalar dependencias
+1. **Configuración**
+   - sucursal nombre
+   - sucursal número
+   - email usuario
+   - ABM simple de ATMs
+2. **Escaneo**
+   - selección de ATM
+   - captura de foto de ticket
+3. **OCR + revisión**
+   - extracción de texto offline
+   - edición manual de texto y campos clave
+4. **Ajustes**
+   - alta de gaveta
+   - denominación y cantidad
+   - monto automático por ajuste
+5. **PDF**
+   - sucursal, ATM, fecha, datos ticket, ajustes, total y timestamp
+6. **Compartir**
+   - botón para compartir PDF (incluye email si app de correo está disponible)
+7. **Historial**
+   - listado local de balanceos generados
 
-```bash
-flutter pub get
-```
+## Extensibilidad preparada
 
-### Ejecutar en Android
+- Parser modular con `abstract class TicketParser` y `GenericTicketParser` fallback.
+- `ParserEngine` listo para registrar parsers por modelo de ticket/ATM.
+- `PdfService` desacoplado para reemplazar layout por plantilla institucional real.
 
-```bash
-flutter run -d android
-```
+## Ejecutar en Windows (desarrollo)
 
-### Ejecutar en iOS
+1. Instalar Flutter estable y Android Studio.
+2. Verificar entorno:
+   ```bash
+   flutter doctor
+   ```
+3. Instalar dependencias:
+   ```bash
+   flutter pub get
+   ```
+4. Ejecutar app:
+   ```bash
+   flutter run
+   ```
 
-```bash
-cd ios && pod install && cd ..
-flutter run -d ios
-```
+## Ejecutar en Android físico
 
-### Tests
+1. Activar **Opciones de desarrollador** y **Depuración USB** en el teléfono.
+2. Conectar por USB.
+3. Verificar dispositivo:
+   ```bash
+   flutter devices
+   ```
+4. Ejecutar:
+   ```bash
+   flutter run -d <deviceId>
+   ```
+
+## Build release Android
+
+1. Generar APK release:
+   ```bash
+   flutter build apk --release
+   ```
+2. (Opcional) Generar App Bundle para Play Store:
+   ```bash
+   flutter build appbundle --release
+   ```
+
+> Nota: para distribución real se debe configurar firma (`key.properties`, keystore, `build.gradle`).
+
+## Tests
 
 ```bash
 flutter test
 ```
 
----
+Incluye tests de:
+- cálculo de ajustes
+- parser genérico
 
-## 5) Estrategia PDF y planilla real (Excel)
+## Restricciones de seguridad / alcance MVP
 
-### Implementado en MVP (placeholder serio)
-- Generador PDF con layout estable y mapeo de campos por coordenadas lógicas.
-- Incluye: sucursal, ATM, fecha, turno, campos parseados, ajustes, total final, observaciones, timestamp.
-- Nombre archivo: `[Sucursal]-[ATM]-[Fecha].pdf`.
-
-### Integración futura de plantilla real (sin reescribir)
-- Se centraliza en `PdfTemplateEngine` y `FieldMap`.
-- Cuando llegue el Excel:
-  1. Exportar/convertir hoja a base PDF o imagen (A4).
-  2. Definir `template.json` con coordenadas/campos.
-  3. Reemplazar `PlaceholderTemplate` por `ExcelTemplateAdapter`.
-  4. Mantener intactos: dominio, parsers, cálculos, flujo UI.
-
-Pendientes cuando se entregue Excel:
-- Ajuste fino de tipografías, offsets y line heights.
-- Validación visual “pixel-perfect” contra planilla oficial.
-- Bloqueo de edición de campos que deban quedar fijos por compliance.
-
+- Sin login
+- 1 usuario local
+- Sin conexión a sistemas bancarios
+- Sin backend
+- Sin datos bancarios reales hardcodeados
