@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../history/history_screen.dart';
 import '../shared/app_scope.dart';
@@ -21,7 +21,7 @@ class _PdfScreenState extends State<PdfScreen> {
     final controller = AppScope.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('PDF y compartir')),
+      appBar: AppBar(title: const Text('Planilla XLSX y compartir')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -36,16 +36,16 @@ class _PdfScreenState extends State<PdfScreen> {
                 final file = await controller.generatePdf();
                 setState(() => pdfFile = file);
               },
-              child: const Text('Generar PDF'),
+              child: const Text('Generar planilla XLSX'),
             ),
             if (pdfFile != null) ...[
               const SizedBox(height: 8),
-              Text('PDF generado: ${pdfFile!.path}'),
+              Text('Planilla generada: ${pdfFile!.path}'),
               FilledButton(
                 onPressed: () async {
-                  await Printing.sharePdf(bytes: await pdfFile!.readAsBytes(), filename: pdfFile!.path.split('/').last);
+                  await Share.shareXFiles([XFile(pdfFile!.path)]);
                 },
-                child: const Text('Enviar por email / compartir'),
+                child: const Text('Enviar por email / compartir planilla'),
               ),
             ],
             const SizedBox(height: 8),

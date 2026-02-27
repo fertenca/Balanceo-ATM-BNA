@@ -1,7 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../providers/app_providers.dart';
 
@@ -22,7 +21,7 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
     final draft = controller.draft;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Resumen y PDF')),
+      appBar: AppBar(title: const Text('Resumen y planilla')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -40,14 +39,14 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                 final path = await controller.saveBalanceoAndPdf(observaciones: obs.text.trim());
                 setState(() => pdfPath = path);
               },
-              child: const Text('Generar PDF y guardar'),
+              child: const Text('Generar planilla XLSX y guardar'),
             ),
             if (pdfPath != null) ...[
               const SizedBox(height: 8),
-              Text('PDF: $pdfPath'),
+              Text('Planilla: $pdfPath'),
               FilledButton(
-                onPressed: () async => Printing.sharePdf(bytes: await File(pdfPath!).readAsBytes(), filename: pdfPath!.split('/').last),
-                child: const Text('Compartir PDF'),
+                onPressed: () async => Share.shareXFiles([XFile(pdfPath!)]),
+                child: const Text('Compartir planilla'),
               ),
             ],
           ],
