@@ -17,6 +17,7 @@ import '../../domain/entities/balanceo.dart';
 import '../../domain/entities/config.dart';
 import '../../domain/entities/ticket_data.dart';
 import '../../domain/services/parser_registry.dart';
+import '../../domain/services/parsers/bna_balance_red_parser.dart';
 import '../../domain/services/parsers/diebold_parser.dart';
 import '../../domain/services/parsers/generic_parser.dart';
 import '../../domain/services/parsers/ncr_parser.dart';
@@ -30,7 +31,7 @@ final _ocrServiceProvider = Provider((ref) => OcrService());
 final _ocrRepositoryProvider = Provider(
   (ref) => OcrRepositoryImpl(service: ref.read(_ocrServiceProvider), preprocessor: ImagePreprocessor()),
 );
-final parserRegistryProvider = Provider((ref) => ParserRegistry([NcrParser(), DieboldParser(), GenericParser()]));
+final parserRegistryProvider = Provider((ref) => ParserRegistry([BnaBalanceRedParser(), NcrParser(), DieboldParser(), GenericParser()]));
 final processTicketProvider = Provider(
   (ref) => ProcessTicketUseCase(ocrRepository: ref.read(_ocrRepositoryProvider), parserRegistry: ref.read(parserRegistryProvider)),
 );

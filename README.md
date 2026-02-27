@@ -4,7 +4,7 @@ Aplicación móvil Flutter para Android (preparada para iOS) orientada al flujo 
 
 ## Diagnóstico del repo
 
-El repositorio ya tenía una base funcional en Flutter con OCR on-device, ajustes por gaveta, generación PDF y persistencia local. En esta iteración se reorganizó en una arquitectura modular por features para acercarla al objetivo de producto solicitado y dejar puntos de extensión claros para futuros parsers y plantilla PDF real.
+El repositorio ya tenía una base funcional en Flutter con OCR on-device, ajustes por gaveta, generación de planilla XLSX y persistencia local. En esta iteración se reorganizó en una arquitectura modular por features para acercarla al objetivo de producto solicitado y dejar puntos de extensión claros para futuros parsers y plantilla planilla XLSX real.
 
 ## Plan técnico aplicado
 
@@ -16,7 +16,7 @@ El repositorio ya tenía una base funcional en Flutter con OCR on-device, ajuste
    - OCR
    - Revisión manual
    - Ajustes
-   - PDF
+   - planilla XLSX
    - Compartir
    - Historial
 4. Implementar sistema de parsers modular con `TicketParser` + parser genérico fallback.
@@ -73,10 +73,10 @@ lib/
   - simple, robusto para MVP single-user,
   - totalmente offline,
   - fácil migración posterior a DB si escala.
-- **PDF y compartir: `pdf` + `printing`**
-  - generación programática de planilla,
+- **Planilla XLSX y compartir: `excel` + `share_plus`**
+  - generación programática de planilla `.xlsx`,
   - soporte de compartir adjuntos desde móvil,
-  - listo para integrar plantilla real más adelante.
+  - listo para adaptar a plantilla institucional `.xlsx`.
 
 ## Funcionalidades MVP implementadas
 
@@ -95,10 +95,10 @@ lib/
    - alta de gaveta
    - denominación y cantidad
    - monto automático por ajuste
-5. **PDF**
+5. **planilla XLSX**
    - sucursal, ATM, fecha, datos ticket, ajustes, total y timestamp
 6. **Compartir**
-   - botón para compartir PDF (incluye email si app de correo está disponible)
+   - botón para compartir planilla XLSX (incluye email si app de correo está disponible)
 7. **Historial**
    - listado local de balanceos generados
 
@@ -106,7 +106,7 @@ lib/
 
 - Parser modular con `abstract class TicketParser` y `GenericTicketParser` fallback.
 - `ParserEngine` listo para registrar parsers por modelo de ticket/ATM.
-- `PdfService` desacoplado para reemplazar layout por plantilla institucional real.
+- `PdfRepository` desacoplado para reemplazar layout por plantilla institucional real.
 
 ## Ejecutar en Windows (desarrollo)
 

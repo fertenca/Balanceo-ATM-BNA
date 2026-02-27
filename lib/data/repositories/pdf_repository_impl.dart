@@ -1,10 +1,9 @@
 import 'dart:io';
 
+import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 
 import '../../domain/entities/balanceo.dart';
 import '../../domain/entities/config.dart';
@@ -17,45 +16,61 @@ class PdfRepositoryImpl implements PdfRepository {
     required Balanceo balanceo,
     required String atmName,
   }) async {
-    final pdf = pw.Document();
+    final excel = Excel.createExcel();
+    final defaultSheet = excel.getDefaultSheet();
+    final sheet = excel[defaultSheet ?? 'Planilla'];
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (_) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text('PLANILLA DIARIA ATM (Placeholder Template)', style: pw.TextStyle(fontSize: 16)),
-            pw.SizedBox(height: 8),
-            pw.Text('Sucursal: ${config.sucursalNombre} (${config.sucursalNumero})'),
-            pw.Text('ATM: $atmName (${balanceo.atmId})'),
-            pw.Text('Fecha: ${DateFormat('yyyy-MM-dd').format(balanceo.fecha)}  Turno: ${balanceo.turno ?? '-'}'),
-            pw.Divider(),
-            pw.Text('Total esperado: ${balanceo.ticketData.totalEsperado.toStringAsFixed(2)}'),
-            pw.Text('Total contado: ${balanceo.ticketData.totalContado.toStringAsFixed(2)}'),
-            pw.Text('Diferencia ticket: ${balanceo.ticketData.diferencia.toStringAsFixed(2)}'),
-            pw.SizedBox(height: 8),
-            pw.Text('Ajustes por gaveta:'),
-            pw.Table.fromTextArray(
-              headers: const ['Gaveta', 'Denominación', 'Cantidad', 'Monto'],
-              data: balanceo.ajustes
-                  .map((a) => [a.gaveta, a.denominacion.toString(), a.cantidadBilletes.toString(), a.monto.toStringAsFixed(2)])
-                  .toList(),
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text('Total ajustes: ${balanceo.totalAjustes.toStringAsFixed(2)}'),
-            pw.Text('Estado final: ${balanceo.estadoConforme ? 'CONFORME' : 'NO CONFORME'}'),
-            pw.Text('Observaciones: ${balanceo.observaciones ?? '-'}'),
-            pw.Text('Timestamp: ${balanceo.timestamp.toIso8601String()}'),
-          ],
-        ),
-      ),
-    );
+    sheet.cell(CellIndex.indexByString('A1')).value = const TextCellValue('PLANILLA DIARIA ATM');
+    sheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('Sucursal: ${config.sucursalNombre} (${config.sucursalNumero})');
+    sheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('ATM: $atmName (${balanceo.atmId})');
+    sheet.cell(CellIndex.indexByString('A5')).value =
+        TextCellValue('Fecha: ${DateFormat('yyyy-MM-dd').format(balanceo.fecha)}  Turno: ${balanceo.turno ?? '-'}');
+
+    sheet.cell(CellIndex.indexByString('A7')).value = const TextCellValue('Total esperado');
+    sheet.cell(CellIndex.indexByString('B7')).value = DoubleCellValue(balanceo.ticketData.totalEsperado);
+    sheet.cell(CellIndex.indexByString('A8')).value = const TextCellValue('Total contado');
+    sheet.cell(CellIndex.indexByString('B8')).value = DoubleCellValue(balanceo.ticketData.totalContado);
+    sheet.cell(CellIndex.indexByString('A9')).value = const TextCellValue('Diferencia ticket');
+    sheet.cell(CellIndex.indexByString('B9')).value = DoubleCellValue(balanceo.ticketData.diferencia);
+
+    sheet.cell(CellIndex.indexByString('A11')).value = const TextCellValue('Gaveta');
+    sheet.cell(CellIndex.indexByString('B11')).value = const TextCellValue('Denominación');
+    sheet.cell(CellIndex.indexByString('C11')).value = const TextCellValue('Cantidad');
+    sheet.cell(CellIndex.indexByString('D11')).value = const TextCellValue('Monto');
+
+    var row = 12;
+    for (final ajuste in balanceo.ajustes) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row - 1)).value = TextCellValue(ajuste.gaveta);
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row - 1)).value = DoubleCellValue(ajuste.denominacion);
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: row - 1)).value = IntCellValue(ajuste.cantidadBilletes);
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row - 1)).value = DoubleCellValue(ajuste.monto);
+      row++;
+    }
+
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row)).value = const TextCellValue('Total ajustes');
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row)).value = DoubleCellValue(balanceo.totalAjustes);
+    row += 2;
+
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row)).value = const TextCellValue('Estado final');
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row)).value =
+        TextCellValue(balanceo.estadoConforme ? 'CONFORME' : 'NO CONFORME');
+    row++;
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row)).value = const TextCellValue('Observaciones');
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row)).value = TextCellValue(balanceo.observaciones ?? '-');
+    row++;
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row)).value = const TextCellValue('Timestamp');
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row)).value =
+        TextCellValue(balanceo.timestamp.toIso8601String());
+
+    final encoded = excel.encode();
+    if (encoded == null) {
+      throw StateError('No se pudo generar la planilla XLSX.');
+    }
 
     final dir = await getApplicationDocumentsDirectory();
-    final fileName = '${config.sucursalNombre}-$atmName-${DateFormat('yyyyMMdd').format(balanceo.fecha)}.pdf';
+    final fileName = '${config.sucursalNombre}-$atmName-${DateFormat('yyyyMMdd').format(balanceo.fecha)}.xlsx';
     final file = File(p.join(dir.path, fileName));
-    await file.writeAsBytes(await pdf.save());
+    await file.writeAsBytes(encoded, flush: true);
     return file.path;
   }
 }
