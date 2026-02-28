@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/models/atm.dart';
 import '../review/review_screen.dart';
 import '../shared/app_scope.dart';
 
@@ -33,7 +34,13 @@ class _ScanScreenState extends State<ScanScreen> {
                   .map((atm) => DropdownMenuItem(value: atm.id, child: Text('${atm.nombre} (${atm.id})')))
                   .toList(),
               onChanged: (id) {
-                final atm = controller.config.atms.where((e) => e.id == id).firstOrNull;
+                ATM? atm;
+                for (final item in controller.config.atms) {
+                  if (item.id == id) {
+                    atm = item;
+                    break;
+                  }
+                }
                 controller.chooseAtm(atm);
               },
             ),
@@ -53,11 +60,29 @@ class _ScanScreenState extends State<ScanScreen> {
               onPressed: processing
                   ? null
                   : () async {
+                      if (controller.selectedAtm == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Seleccioná un ATM antes de continuar.')),
+                        );
+                        return;
+                      }
+                      if (controller.ticketImage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Capturá la foto del ticket antes de continuar.')),
+                        );
+                        return;
+                      }
+
                       setState(() => processing = true);
-                      await controller.runOcrAndParse();
-                      if (!mounted) return;
-                      setState(() => processing = false);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewScreen()));
+                      try {
+                        await controller.runOcrAndParse();
+                        if (!mounted) return;
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewScreen()));
+                      } finally {
+                        if (mounted) {
+                          setState(() => processing = false);
+                        }
+                      }
                     },
               child: Text(processing ? 'Procesando...' : 'Ejecutar OCR offline'),
             ),

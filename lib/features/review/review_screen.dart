@@ -16,15 +16,27 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final totalContado = TextEditingController();
   final diferencia = TextEditingController();
   final rawText = TextEditingController();
+  bool _loadedInitialValues = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_loadedInitialValues) return;
     final ticket = AppScope.of(context).ticketData;
     totalTicket.text = ticket.totalTicket;
     totalContado.text = ticket.totalContado;
     diferencia.text = ticket.diferencia;
     rawText.text = ticket.textoOriginal;
+    _loadedInitialValues = true;
+  }
+
+  @override
+  void dispose() {
+    totalTicket.dispose();
+    totalContado.dispose();
+    diferencia.dispose();
+    rawText.dispose();
+    super.dispose();
   }
 
   @override

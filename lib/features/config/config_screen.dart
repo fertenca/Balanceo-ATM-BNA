@@ -16,15 +16,31 @@ class _ConfigScreenState extends State<ConfigScreen> {
   final nombreController = TextEditingController();
   final numeroController = TextEditingController();
   final emailController = TextEditingController();
+  bool _loadedInitialValues = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_loadedInitialValues) return;
+    final config = AppScope.of(context).config;
+    nombreController.text = config.sucursalNombre;
+    numeroController.text = config.sucursalNumero;
+    emailController.text = config.emailUsuario;
+    _loadedInitialValues = true;
+  }
+
+  @override
+  void dispose() {
+    nombreController.dispose();
+    numeroController.dispose();
+    emailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final atms = [...controller.config.atms];
-
-    nombreController.text = controller.config.sucursalNombre;
-    numeroController.text = controller.config.sucursalNumero;
-    emailController.text = controller.config.emailUsuario;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Configuración')),
@@ -33,9 +49,11 @@ class _ConfigScreenState extends State<ConfigScreen> {
         child: ListView(
           children: [
             TextField(controller: nombreController, decoration: const InputDecoration(labelText: 'Sucursal nombre')),
-            TextField(controller: numeroController, decoration: const InputDecoration(labelText: 'Sucursal número')),
-            TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email usuario')),
             const SizedBox(height: 12),
+            TextField(controller: numeroController, decoration: const InputDecoration(labelText: 'Sucursal número')),
+            const SizedBox(height: 12),
+            TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email usuario')),
+            const SizedBox(height: 16),
             Row(
               children: [
                 const Expanded(child: Text('ATMs')),
@@ -52,11 +70,11 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(Icons.add_circle),
                 ),
               ],
             ),
-            ...atms.map((e) => ListTile(title: Text(e.nombre), subtitle: Text('ID ATM: ${e.id}'))),
+            ...atms.map((e) => Card(child: ListTile(title: Text(e.nombre), subtitle: Text('ID ATM: ${e.id}')))),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () async {
@@ -82,21 +100,38 @@ class _ConfigScreenState extends State<ConfigScreen> {
   Future<ATM?> _showAtmDialog(BuildContext context) async {
     final id = TextEditingController();
     final nombre = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
     return showDialog<ATM>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Nuevo ATM'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: id, decoration: const InputDecoration(labelText: 'ID ATM')),
-            TextField(controller: nombre, decoration: const InputDecoration(labelText: 'Nombre ATM')),
-          ],
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: id,
+                decoration: const InputDecoration(labelText: 'ID ATM'),
+                validator: (value) => value == null || value.trim().isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: nombre,
+                decoration: const InputDecoration(labelText: 'Nombre ATM'),
+                validator: (value) => value == null || value.trim().isEmpty ? 'Requerido' : null,
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(
-            onPressed: () => Navigator.pop(context, ATM(id: id.text.trim(), nombre: nombre.text.trim())),
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(context, ATM(id: id.text.trim(), nombre: nombre.text.trim()));
+            },
             child: const Text('Agregar'),
           ),
         ],
